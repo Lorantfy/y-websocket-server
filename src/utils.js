@@ -101,6 +101,11 @@ export const setContentInitializor = (f) => {
 
 export class WSSharedDoc extends Y.Doc {
   /**
+   * @type {((update: Uint8Array, origin: any, doc: Y.Doc) => void)|null}
+   */
+  updateCallback = null
+
+  /**
    * @param {string} name
    */
   constructor (name) {
@@ -140,6 +145,9 @@ export class WSSharedDoc extends Y.Doc {
     }
     this.awareness.on('update', awarenessChangeHandler)
     this.on('update', /** @type {any} */ (updateHandler))
+    if (this.updateCallback) {
+      this.on('update', this.updateCallback)
+    }
     if (isCallbackSet) {
       this.on('update', (_update, _origin, doc) => {
         debouncer(() => callbackHandler(/** @type {WSSharedDoc} */ (doc)))
@@ -154,11 +162,13 @@ export class WSSharedDoc extends Y.Doc {
  *
  * @param {string} docname - the name of the Y.Doc to find or create
  * @param {boolean} gc - whether to allow gc on the doc (applies only when created)
+ * @param {((update: Uint8Array, origin: any, doc: Y.Doc) => void)|null} updateCallback - callback to call when an update is received
  * @return {WSSharedDoc}
  */
-export const getYDoc = (docname, gc = true) => map.setIfUndefined(docs, docname, () => {
+export const getYDoc = (docname, gc = true, updateCallback = null) => map.setIfUndefined(docs, docname, () => {
   const doc = new WSSharedDoc(docname)
   doc.gc = gc
+  doc.updateCallback = updateCallback
   if (persistence !== null) {
     persistence.bindState(docname, doc)
   }
@@ -245,12 +255,16 @@ const pingTimeout = 30000
 /**
  * @param {import('ws').WebSocket} conn
  * @param {import('http').IncomingMessage} req
- * @param {any} opts
+ * @param {{
+ *  docName?: string,
+ *  gc?: boolean,
+ *  updateCallback?: null|((update: Uint8Array, origin: any, doc: Y.Doc) => void)
+ * }} opts
  */
-export const setupWSConnection = (conn, req, { docName = (req.url || '').slice(1).split('?')[0], gc = true } = {}) => {
+export const setupWSConnection = (conn, req, { docName = (req.url || '').slice(1).split('?')[0], gc = true, updateCallback = null } = {}) => {
   conn.binaryType = 'arraybuffer'
   // get doc, initialize if it does not exist yet
-  const doc = getYDoc(docName, gc)
+  const doc = getYDoc(docName, gc, updateCallback)
   doc.conns.set(conn, new Set())
   // listen and reply to events
   conn.on('message', /** @param {ArrayBuffer} message */ message => messageListener(conn, doc, new Uint8Array(message)))
