@@ -107,10 +107,12 @@ export class WSSharedDoc extends Y.Doc {
 
   /**
    * @param {string} name
+   * @param {((update: Uint8Array, origin: any, doc: Y.Doc) => void)|null} updateCallback
    */
-  constructor (name) {
+  constructor (name, updateCallback = null) {
     super({ gc: gcEnabled })
     this.name = name
+    this.updateCallback = updateCallback
     /**
      * Maps from conn to set of controlled user ids. Delete all user ids from awareness when this conn is closed
      * @type {Map<Object, Set<number>>}
@@ -166,9 +168,8 @@ export class WSSharedDoc extends Y.Doc {
  * @return {WSSharedDoc}
  */
 export const getYDoc = (docname, gc = true, updateCallback = null) => map.setIfUndefined(docs, docname, () => {
-  const doc = new WSSharedDoc(docname)
+  const doc = new WSSharedDoc(docname, updateCallback)
   doc.gc = gc
-  doc.updateCallback = updateCallback
   if (persistence !== null) {
     persistence.bindState(docname, doc)
   }
