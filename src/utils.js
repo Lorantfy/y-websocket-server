@@ -101,13 +101,13 @@ export const setContentInitializor = (f) => {
 
 export class WSSharedDoc extends Y.Doc {
   /**
-   * @type {((update: Uint8Array, origin: any, doc: Y.Doc) => void)|null}
+   * @type {((update: Uint8Array, origin: any, doc: WSSharedDoc) => void)|null}
    */
   updateCallback = null
 
   /**
    * @param {string} name
-   * @param {((update: Uint8Array, origin: any, doc: Y.Doc) => void)|null} updateCallback
+   * @param {((update: Uint8Array, origin: any, doc: WSSharedDoc) => void)|null} updateCallback
    */
   constructor (name, updateCallback = null) {
     super({ gc: gcEnabled })
@@ -148,7 +148,7 @@ export class WSSharedDoc extends Y.Doc {
     this.awareness.on('update', awarenessChangeHandler)
     this.on('update', /** @type {any} */ (updateHandler))
     if (this.updateCallback) {
-      this.on('update', this.updateCallback)
+      this.on('update', (update, origin) => this.updateCallback?.(update, origin, this))
     }
     if (isCallbackSet) {
       this.on('update', (_update, _origin, doc) => {
@@ -164,7 +164,7 @@ export class WSSharedDoc extends Y.Doc {
  *
  * @param {string} docname - the name of the Y.Doc to find or create
  * @param {boolean} gc - whether to allow gc on the doc (applies only when created)
- * @param {((update: Uint8Array, origin: any, doc: Y.Doc) => void)|null} updateCallback - callback to call when an update is received
+ * @param {((update: Uint8Array, origin: any, doc: WSSharedDoc) => void)|null} updateCallback - callback to call when an update is received
  * @return {WSSharedDoc}
  */
 export const getYDoc = (docname, gc = true, updateCallback = null) => map.setIfUndefined(docs, docname, () => {
@@ -259,7 +259,7 @@ const pingTimeout = 30000
  * @param {{
  *  docName?: string,
  *  gc?: boolean,
- *  updateCallback?: null|((update: Uint8Array, origin: any, doc: Y.Doc) => void)
+ *  updateCallback?: null|((update: Uint8Array, origin: any, doc: WSSharedDoc) => void)
  * }} opts
  */
 export const setupWSConnection = (conn, req, { docName = (req.url || '').slice(1).split('?')[0], gc = true, updateCallback = null } = {}) => {
